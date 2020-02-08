@@ -1,3 +1,4 @@
+<img align="right" width="205" height="109" src="/images/chester_logs.png">
 # Chester
 
 Chester is a tool aiming at automatically launching experiments. This tool based on rllab(https://github.com/rll/rllab ), and further extended for launching and retrieving experiments in different remote machines, including:
