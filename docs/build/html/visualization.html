@@ -1,0 +1,255 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Visualization &mdash; Chester v0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Logger" href="logger.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Chester
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="launcher.html">Launcher</a></li>
+<li class="toctree-l1"><a class="reference internal" href="logger.html">Logger</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Visualization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#batch-plotting">Batch Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interactive-frontend">Interactive Frontend</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#preset">Preset</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Chester</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Visualization</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/visualization.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="visualization">
+<span id="id1"></span><h1>Visualization<a class="headerlink" href="#visualization" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="batch-plotting">
+<span id="id2"></span><h2>Batch Plotting<a class="headerlink" href="#batch-plotting" title="Permalink to this headline">¶</a></h2>
+<p>If the data are logged with Chester, they can also be easily plotted in batch.
+After the data are logged, for each experiment, the hyper-parameters are stored in <code class="docutils literal notranslate"><span class="pre">variants.json</span></code> and different
+key values are stored in <code class="docutils literal notranslate"><span class="pre">progress.csv</span></code>. <code class="docutils literal notranslate"><span class="pre">chester/plotting/cplots.py</span></code> offers the functions that can be used to
+organize different experiments based on their key values:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">reload_data()</span></code>: Iterate through the data folder and organize each experiment into a list, with their progress data, hyper-parameters and also analyze all the curves and give the distinct hyper-parameters.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_group_selectors()</span></code>: You should write a <code class="docutils literal notranslate"><span class="pre">custom_series_splitter()</span></code>, which provides a legend for each experiment based on its hyper-parameters. This function will then group all the experiments by their legends.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">get_shaded_curve()</span></code>: Create the needed y-values for plots with shades (representing variance or median) for a certain key value.</p></li>
+</ul>
+</div></blockquote>
+<p>A data structure from rllab visualization kit can be useful: <code class="docutils literal notranslate"><span class="pre">Selector</span></code>. It can be constructed from the loaded
+experiments data structure:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">rllab.viskit</span> <span class="k">import</span> <span class="n">core</span>
+<span class="n">exps_data</span><span class="p">,</span> <span class="n">plottable_keys</span><span class="p">,</span> <span class="n">distinct_params</span> <span class="o">=</span> <span class="n">reload_data</span><span class="p">(</span><span class="n">path_to_data_folder</span><span class="p">)</span>
+<span class="n">selector</span> <span class="o">=</span> <span class="n">Selector</span><span class="p">(</span><span class="n">exps_data</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>After that, it can be used to extract progress infomation for a certain key value:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">progresses</span> <span class="o">=</span> <span class="p">[</span><span class="n">exp</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">))</span> <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">selector</span><span class="o">.</span><span class="n">extract</span><span class="p">()]</span>
+</pre></div>
+</div>
+<p>or be filtered based on certain hyper-parameters:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">selector</span> <span class="o">=</span> <span class="n">selector</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="s1">&#39;env_name&#39;</span><span class="p">,</span> <span class="n">env_name</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Some examples can be found in both <code class="docutils literal notranslate"><span class="pre">chester/cplots.py</span></code> and <code class="docutils literal notranslate"><span class="pre">chester/examples/cplot_example.py</span></code></p>
+</div>
+<div class="section" id="interactive-frontend">
+<span id="id3"></span><h2>Interactive Frontend<a class="headerlink" href="#interactive-frontend" title="Permalink to this headline">¶</a></h2>
+<p>Currently the interactive visualization feature is still coupled with the rllab.
+It can be accessed by doing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">rllab</span><span class="o">/</span><span class="n">viskit</span><span class="o">/</span><span class="n">frontend</span><span class="o">.</span><span class="n">py</span> <span class="o">&lt;</span><span class="n">data_folder</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<div class="section" id="preset">
+<span id="id4"></span><h3>Preset<a class="headerlink" href="#preset" title="Permalink to this headline">¶</a></h3>
+<p>You may want to use a complex legend post-processor or splitter.
+The preset feature can be used to save such a setting. First write a <code class="docutils literal notranslate"><span class="pre">presets.py</span></code>. Then, put it in the root of the
+data folder that you want to visualize. Now when you use the frontend visualization, there will be a preset button that
+you can choose. Some exmples of <code class="docutils literal notranslate"><span class="pre">presets.py</span></code> can be found at <code class="docutils literal notranslate"><span class="pre">chester/examples</span></code></p>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="logger.html" class="btn btn-neutral float-left" title="Logger" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Xingyu Lin
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
