@@ -310,6 +310,10 @@ def run_experiment_lite(
     """
     last_variant = variant.pop('chester_last_variant', False)
     first_variant = variant.pop('chester_first_variant', False)
+    local_chester_queue_dir = config.LOG_DIR + '/queues'
+    if first_variant:
+        os.system(f'mkdir -p {local_chester_queue_dir}')
+        # os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + config.CHESTER_QUEUE_DIR))
     if mode == 'singularity':
         mode = 'local_singularity'
     assert stub_method_call is not None or batch_tasks is not None, "Must provide at least either stub_method_call or batch_tasks"
@@ -331,7 +335,7 @@ def run_experiment_lite(
 
     if mode == 'ec2':
         query_yes_no('Confirm: Launching jobs to ec2')
-
+    # pdb.set_trace()
     for task in batch_tasks:
         # time.sleep(3)
         call = task.pop("stub_method_call")
@@ -374,8 +378,16 @@ def run_experiment_lite(
             print(mode)
             if mode in ['seuss', 'psc', 'autobot', 'autobot2']:
                 task["log_dir"] = config.REMOTE_LOG_DIR[mode] + "/train/" + exp_prefix + "/" + task["exp_name"]
+                # task['local_dir'] = config.PROJECT_PATH + "/train/" + exp_prefix + "/" + task["exp_name"]
+                # task["log_dir"] = config.PROJECT_PATH + "/train/" + exp_prefix + "/" + task["exp_name"]
             else:
                 task["log_dir"] = config.LOG_DIR + "/train/" + exp_prefix + "/" + task["exp_name"]
+                # task['local_dir'] = config.PROJECT_PATH + "/train/" + exp_prefix + "/" + task["exp_name"]
+        remote_batch_dir = config.REMOTE_LOG_DIR[mode] + "/train/"
+        local_batch_dir = config.LOG_DIR + "/train/" + exp_prefix
+        local_exp_dir = local_batch_dir + "/" + task["exp_name"]
+        os.system(f'mkdir -p {local_exp_dir}')
+
         if task.get("variant", None) is not None:
             variant = task.pop("variant")
             if "exp_name" not in variant:
@@ -491,7 +503,8 @@ def run_experiment_lite(
             print('Executing create folder', data_dir)
             # os.system("ssh {host} \'{cmd}\'".format(host=config.HOST_ADDRESS[mode], cmd='mkdir -p ' + os.path.join(remote_dir, data_dir)))
             os.system("ssh {host} \'{cmd}\'".format(host=config.HOST_ADDRESS[mode], cmd='mkdir -p ' + data_dir))
-            cmd = 'scp -o ProxyJump=zixuanhu@ss {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name, host=config.HOST_ADDRESS[mode])
+            cmd = 'scp -o ProxyJump=zixuanhu@ss {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name,
+                                                                         host=config.HOST_ADDRESS[mode])
             print('Executing cp script: ', cmd)
             os.system(cmd)  # Copy script
             if not dry:
@@ -501,7 +514,6 @@ def run_experiment_lite(
             # Cleanup
             os.remove(script_name)
     elif mode in ['autobot']:
-        os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + config.CHESTER_QUEUE_DIR))
         for task in batch_tasks:
             # TODO check remote directory
             remote_dir = config.REMOTE_DIR[mode]
@@ -511,7 +523,8 @@ def run_experiment_lite(
                 rsync_code(remote_host=mode, remote_dir=remote_dir)
             data_dir = task['log_dir']
             # data_dir = os.path.join('data', 'local', exp_prefix, task['exp_name'])
-            remote_script_name = os.path.join(remote_dir, data_dir, task['exp_name'])
+            remote_script_name = os.path.join(data_dir, task['exp_name'])
+            local_script_name = os.path.join(local_exp_dir, task['exp_name'])
             header = '#CHESTERNODE ' + ','.join(config.AUTOBOT_NODELIST)
             header = header + "\n#CHESTEROUT " + os.path.join(data_dir, 'slurm.out')
             header = header + "\n#CHESTERERR " + os.path.join(data_dir, 'slurm.err')
@@ -538,28 +551,35 @@ def run_experiment_lite(
             if print_command:
                 print("; ".join(command_list))
             command = "\n".join(command_list)
-            script_name = './' + task['exp_name']
-            scheduler_script_name = os.path.join(config.CHESTER_QUEUE_DIR, task['exp_name'])
+            script_name = './data/tmp/' + task['exp_name']
+            scheduler_script_name = os.path.join(local_chester_queue_dir, task['exp_name'])
             with open(script_name, 'w') as f:
                 f.write(command)
-            os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + os.path.join(data_dir)))
-            os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name, host=mode))  # Copy script
-            os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=scheduler_script_name, host=mode))
+            # pdb.set_trace()
+            # os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + os.path.join(data_dir)))
+            # os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name, host=mode))  # Copy script
+            # os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=scheduler_script_name, host=mode))
+            os.system(f'cp {script_name} {local_script_name}')
+            os.system(f'cp {script_name} {scheduler_script_name}')
             # Cleanup
             os.remove(script_name)
             # Open scheduler if all jobs have been submitted
             # Remote end will only open another scheduler when there is not one running already
             # Redirect the output of the remote scheduler to the log file
             if last_variant:
-
-                os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + config.CHESTER_CHEDULER_LOG_DIR))
+                os.system('scp -r {f1} {host}:{f2}'.format(f1=local_batch_dir, f2=remote_batch_dir, host=mode))
+                os.system('scp -r {f1} {host}:{f2}'.format(f1=local_chester_queue_dir, f2=config.CHESTER_QUEUE_DIR,
+                                                           host=mode))
+                os.system(f'rm -rf {local_batch_dir}')
+                os.system(f'rm -rf {local_chester_queue_dir}')
+                # os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + config.CHESTER_CHEDULER_LOG_DIR))
                 t = datetime.datetime.now(dateutil.tz.tzlocal()).strftime('%m_%d_%H_%M')
                 # log_file = os.path.join(config.CHESTER_CHEDULER_LOG_DIR, f'{t}.txt')
                 log_file = os.path.join(config.CHESTER_CHEDULER_LOG_DIR, f'log_{t}.txt')
                 print('Ready to execute the scheduler')
                 cmd = "ssh  {host} \'{cmd} > {output}&\'".format(host=mode,
-                                                                cmd=f'cd {remote_dir} && . ./prepare.sh && nohup python chester/scheduler/remote_scheduler.py',
-                                                                output=log_file)
+                                                                 cmd=f'cd {remote_dir} && . ./prepare.sh && nohup python chester/scheduler/remote_scheduler.py',
+                                                                 output=log_file)
                 if dry:
                     print(remote_script_name)
                     print(cmd)

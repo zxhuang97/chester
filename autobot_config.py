@@ -9,8 +9,8 @@ AUTOBOT_NODELIST = [
     # '0-29',
     # '0-33',
     # '0-37',                                   # 8x3090 + 96 cpus
-    # '1-1',                                                      # 10x2080 + 40 cpus
-    # '1-6',                                                     # 10x2080 + 40 cpus
+    '1-1',                                                      # 10x2080 + 40 cpus
+    '1-6',                                                     # 10x2080 + 40 cpus
     # '1-10',
     # '1-14',
     '1-18',
@@ -31,5 +31,5 @@ AUTOBOT_NODELIST = [
 #     '1-18',
 # ]
 GPU_STATE_DIR = '/project_data/mtcmon/nodestats/'
-CHESTER_QUEUE_DIR = '/home/zixuanhu/chester_scheduler/queues'
+CHESTER_QUEUE_DIR = '/home/zixuanhu/chester_scheduler/'
 CHESTER_CHEDULER_LOG_DIR = '/home/zixuanhu/chester_scheduler/logs/'
