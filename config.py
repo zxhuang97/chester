@@ -15,13 +15,13 @@ HOST_ADDRESS = {
 
 # Make sure to use absolute path
 REMOTE_DIR = {
-    'seuss': '/home/zixuanhu/occlusion_reasoning',
-    'autobot': '/home/zixuanhu/occlusion_reasoning',
-    'autobot2': '/home/zixuanhu/occlusion_reasoning',
-    'psc': '/home/xlin3/Projects/softagent',
-    'nsh': '/home/xingyu/Projects/softagent',
-    'yertle': '/home/xingyu/Projects/softagent',
-    'local': '/home/zixuanhu/main_softagent_rpad'
+    'seuss': '/home/zixuanhu/CDN',
+    'autobot': '/home/zixuanhu/CDN',
+    'autobot2': '/home/zixuanhu/CDN',
+    # 'psc': '/home/xlin3/Projects/softagent',
+    # 'nsh': '/home/xingyu/Projects/softagent',
+    # 'yertle': '/home/xingyu/Projects/softagent',
+    # 'local': '/home/zixuanhu/main_softagent_rpad'
 }
 
 REMOTE_MOUNT_OPTION = {

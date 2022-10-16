@@ -4,14 +4,14 @@ import glob
 import pdb
 import pickle
 import time
+import sys
+sys.path.insert(0, '/home/zixuanhu/CDN')
 from chester import config
 from chester.utils_logger import timelog
 import psutil
 
 check_interval = 120  # Check every 60 seconds for available GPUs
 user_name = 'zixuanhu'
-
-
 def checkIfProcessRunning(processName):
     '''
     Check if there is any running process that contains the given name processName.
@@ -35,6 +35,7 @@ def check_available_nodes():
         while 1:
             try:
                 all_stats.append(pickle.load(open(p, 'rb')))
+                time.sleep(0.1)
             except:
                 print(p, ' is broken')
                 continue

@@ -8,7 +8,8 @@ import uuid
 import pickle as pickle
 import base64
 import joblib
-
+import sys
+sys.path.insert(0, '/home/zixuanhu/CDN')
 from chester import config
 
 

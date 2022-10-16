@@ -1,9 +1,12 @@
 import os
+import pdb
 import re
 import subprocess
 import base64
 import os.path as osp
 import pickle as pickle
+import time
+
 import numpy as np
 import inspect
 import collections
@@ -330,6 +333,7 @@ def run_experiment_lite(
         query_yes_no('Confirm: Launching jobs to ec2')
 
     for task in batch_tasks:
+        # time.sleep(3)
         call = task.pop("stub_method_call")
         if use_cloudpickle:
             import cloudpickle
@@ -387,7 +391,6 @@ def run_experiment_lite(
             "Running in (non-dry) mode %s. Confirm?" % mode)
         if not remote_confirmed:
             sys.exit(1)
-
     if mode in ["local", "local2"]:
         for task in batch_tasks:
             env = task.pop("env", None)
@@ -488,16 +491,17 @@ def run_experiment_lite(
             print('Executing create folder', data_dir)
             # os.system("ssh {host} \'{cmd}\'".format(host=config.HOST_ADDRESS[mode], cmd='mkdir -p ' + os.path.join(remote_dir, data_dir)))
             os.system("ssh {host} \'{cmd}\'".format(host=config.HOST_ADDRESS[mode], cmd='mkdir -p ' + data_dir))
-            cmd = 'scp {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name, host=config.HOST_ADDRESS[mode])
+            cmd = 'scp -o ProxyJump=zixuanhu@ss {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name, host=config.HOST_ADDRESS[mode])
             print('Executing cp script: ', cmd)
             os.system(cmd)  # Copy script
             if not dry:
-                cmd = "ssh " + config.HOST_ADDRESS[mode] + " \'sbatch " + remote_script_name + "\'"
+                cmd = "ssh -J zixuanhu@ss " + config.HOST_ADDRESS[mode] + " \'sbatch " + remote_script_name + "\'"
                 print('Submit to slurm ', cmd)
                 os.system(cmd)  # Launch
             # Cleanup
             os.remove(script_name)
-    elif mode in 'autobot':
+    elif mode in ['autobot']:
+        os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + config.CHESTER_QUEUE_DIR))
         for task in batch_tasks:
             # TODO check remote directory
             remote_dir = config.REMOTE_DIR[mode]
@@ -539,7 +543,6 @@ def run_experiment_lite(
             with open(script_name, 'w') as f:
                 f.write(command)
             os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + os.path.join(data_dir)))
-            os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + config.CHESTER_QUEUE_DIR))
             os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name, host=mode))  # Copy script
             os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=scheduler_script_name, host=mode))
             # Cleanup
@@ -554,13 +557,15 @@ def run_experiment_lite(
                 # log_file = os.path.join(config.CHESTER_CHEDULER_LOG_DIR, f'{t}.txt')
                 log_file = os.path.join(config.CHESTER_CHEDULER_LOG_DIR, f'log_{t}.txt')
                 print('Ready to execute the scheduler')
-                cmd = "ssh {host} \'{cmd} > {output}&\'".format(host=mode,
+                cmd = "ssh  {host} \'{cmd} > {output}&\'".format(host=mode,
                                                                 cmd=f'cd {remote_dir} && . ./prepare.sh && nohup python chester/scheduler/remote_scheduler.py',
                                                                 output=log_file)
                 if dry:
+                    print(remote_script_name)
                     print(cmd)
                 else:
                     os.system(cmd)
+
     elif mode == 'csail':
         # Launcher is running on the compute node, so no needed to sync codes
         available_nodes = []
