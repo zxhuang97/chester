@@ -484,7 +484,7 @@ def run_experiment_lite(
                 os.system(f'rm -rf {local_batch_dir}')
                 print('Ready to execute the scheduler')
                 remote_cmd = (f'cd {remote_dir} && . ./prepare.sh && '
-                              f'python chester/scheduler/remote_slurm_launcher.py {remote_batch_dir} {dry}')
+                              f'python chester/scheduler/remote_slurm_launcher.py {remote_batch_dir} {int(dry)}')
                 cmd = "ssh  {host} \'{cmd} \'".format(host=host,
                                                       cmd=remote_cmd
                                                       )
