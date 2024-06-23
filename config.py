@@ -37,13 +37,6 @@ REMOTE_LOG_DIR = {
     'armdual':  os.path.join(REMOTE_DIR['armdual'], "data"),
 }
 
-# PSC: https://www.psc.edu/bridges/user-guide/running-jobs
-# partition include [RM, RM-shared, LM, GPU]
-# TODO change cpu-per-task based on the actual cpus needed (on psc)
-# #SBATCH --exclude=compute-0-[7,11]
-# Adding this will make the job to grab the whole gpu. #SBATCH --gres=gpu:1
-#SBATCH --exclude=compute-0-[5]
-#SBATCH --exclude=compute-0-[5,7,9,11,13]
 REMOTE_HEADER = dict(gl="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
@@ -52,23 +45,7 @@ REMOTE_HEADER = dict(gl="""
 #SBATCH --time=72:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=60G
-""".strip(), seuss="""
-#!/usr/bin/env bash
-#SBATCH --nodes=1
-#SBATCH --partition=GPU
-#SBATCH --exclude=compute-0-[5,7,9,11,13]
-#SBATCH --cpus-per-task=4
-#SBATCH --time=240:00:00
-#SBATCH --gres=gpu:1
-#SBATCH --mem=40G
-""".strip(), psc="""
-#!/usr/bin/env bash
-#SBATCH --nodes=1
-#SBATCH --partition=RM
-#SBATCH --ntasks-per-node=18
-#SBATCH --time=48:00:00
-#SBATCH --mem=64G
-""".strip(),
+""".strip(), 
 autobot="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
