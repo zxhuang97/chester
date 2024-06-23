@@ -6,6 +6,7 @@ data
 *__pycache__*
 build
 .idea
+*.mp4
 .git
 DPI-Net
 videos
@@ -16,6 +17,12 @@ logs
 notebook
 test_records.yaml
 out*
-datasets
 dataset2
+baselines/diffusion_policy/data
 softgym/softgym/cached_initial_states
+third_party/LION
+third_party/diffusion-point-cloud
+third_party/rpdiff
+third_party/lndf_robot
+third_party/pytorch3d/pytorch3d/*.so
+third_party/pytorch3d/*egg-info*

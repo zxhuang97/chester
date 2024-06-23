@@ -6,10 +6,11 @@ import base64
 import os.path as osp
 import pickle as pickle
 import time
-
+import cloudpickle
 import numpy as np
 import inspect
 import collections
+import glob
 import hashlib
 import sys
 import datetime
@@ -263,7 +264,6 @@ def rsync_code(remote_host, remote_dir):
     print('Ready to rsync code: remote host: {}, remote_dir: {}'.format(remote_host, remote_dir))
     cmd = 'rsync -avzh --delete --include-from=\'./chester/rsync_include\' --exclude-from=\'./chester/rsync_exclude\' ./ ' + remote_host + ':' + remote_dir
     print(cmd)
-    # exit()
     os.system(cmd)
 
 
@@ -279,6 +279,7 @@ def run_experiment_lite(
         exp_prefix="experiment",
         exp_name=None,
         log_dir=None,
+        sub_dir='train',
         script='chester/run_exp_worker.py',  # TODO: change this before making pip package
         python_command="python",
         mode="local",
@@ -313,7 +314,6 @@ def run_experiment_lite(
     local_chester_queue_dir = config.LOG_DIR + '/queues'
     if first_variant:
         os.system(f'mkdir -p {local_chester_queue_dir}')
-        # os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + config.CHESTER_QUEUE_DIR))
     if mode == 'singularity':
         mode = 'local_singularity'
     assert stub_method_call is not None or batch_tasks is not None, "Must provide at least either stub_method_call or batch_tasks"
@@ -325,6 +325,7 @@ def run_experiment_lite(
                 stub_method_call=stub_method_call,
                 exp_name=exp_name,
                 log_dir=log_dir,
+                env=env,
                 variant=variant,
                 use_cloudpickle=use_cloudpickle
             )
@@ -332,15 +333,13 @@ def run_experiment_lite(
 
     global exp_count
     global remote_confirmed
-
-    if mode == 'ec2':
+    remote_batch_dir = os.path.join(config.REMOTE_LOG_DIR[mode], sub_dir)
+    local_batch_dir = os.path.join(config.LOG_DIR, sub_dir, exp_prefix)
+    if mode == 'ec2':  # TODO change query to all tasks
         query_yes_no('Confirm: Launching jobs to ec2')
-    # pdb.set_trace()
     for task in batch_tasks:
-        # time.sleep(3)
         call = task.pop("stub_method_call")
         if use_cloudpickle:
-            import cloudpickle
             data = base64.b64encode(cloudpickle.dumps(call)).decode("utf-8")
         else:
             data = base64.b64encode(pickle.dumps(call)).decode("utf-8")
@@ -349,44 +348,26 @@ def run_experiment_lite(
         params = dict(kwargs)
         # TODO check params
         if task.get("exp_name", None) is None:
-            # task["exp_name"] = "%s_%s_%04d" % (exp_prefix, timestamp, exp_count)
             exp_name = exp_prefix
             for v in variations:
+                key_name = v.split('.')[-1]
                 if isinstance(variant[v], list):
                     continue
                 if isinstance(variant[v], str):
-                    exp_name += '_{}_{}'.format(v, variant[v])
+                    if "path" not in v:
+                        exp_name += '_{}'.format(variant[key_name])
                 elif isinstance(variant[v], bool):
                     if variant[v]:
-                        exp_name += '_{}'.format(v)
-                else:
-                    exp_name += '_{}_{:g}'.format(v, variant[v])
-            if mode in ['seuss', 'autobot', 'autobot2']:
-                # TODO: change to /data/zixuan
-                exp_path = os.path.join(config.REMOTE_LOG_DIR[mode], "train", exp_prefix)
-                import glob
-                ind = len(glob.glob(exp_path + '*'))
-            else:
-                ind = 10
+                        exp_name += '_{}'.format(key_name)
+                elif variant[v] is not None:  # int or float
+                    exp_name += '_{}_{:g}'.format(key_name, variant[v])
+            ind = len(glob.glob(local_batch_dir + '/*'))
             print('exp full name ', exp_name, ind)
             if exp_count == -1:
                 exp_count = ind + 1
-            task["exp_name"] = "{}_{}".format(exp_name, exp_count)
-            print('exp_name : ', task['exp_name'])
+            task["exp_name"] = "{}_{}".format(exp_count, exp_name)
         if task.get("log_dir", None) is None:
-            # TODO add remote dir here
-            print(mode)
-            if mode in ['seuss', 'psc', 'autobot', 'autobot2']:
-                task["log_dir"] = config.REMOTE_LOG_DIR[mode] + "/train/" + exp_prefix + "/" + task["exp_name"]
-                # task['local_dir'] = config.PROJECT_PATH + "/train/" + exp_prefix + "/" + task["exp_name"]
-                # task["log_dir"] = config.PROJECT_PATH + "/train/" + exp_prefix + "/" + task["exp_name"]
-            else:
-                task["log_dir"] = config.LOG_DIR + "/train/" + exp_prefix + "/" + task["exp_name"]
-                # task['local_dir'] = config.PROJECT_PATH + "/train/" + exp_prefix + "/" + task["exp_name"]
-        remote_batch_dir = config.REMOTE_LOG_DIR[mode] + "/train/"
-        local_batch_dir = config.LOG_DIR + "/train/" + exp_prefix
-        local_exp_dir = local_batch_dir + "/" + task["exp_name"]
-        os.system(f'mkdir -p {local_exp_dir}')
+            task['log_dir'] = os.path.join(config.REMOTE_LOG_DIR[mode], sub_dir, exp_prefix, task["exp_name"])
 
         if task.get("variant", None) is not None:
             variant = task.pop("variant")
@@ -397,13 +378,15 @@ def run_experiment_lite(
         elif "variant" in task:
             del task["variant"]
         task["env"] = task.get("env", dict()) or dict()
+        local_exp_dir = os.path.join(local_batch_dir, task["exp_name"])
 
-    if mode not in ["local", "local2", "local_singularity", "ec2"] and not remote_confirmed and not dry:
+    if mode not in ["local", "gl", "local_singularity", "ec2"] and not remote_confirmed and not dry:
         remote_confirmed = query_yes_no(
             "Running in (non-dry) mode %s. Confirm?" % mode)
         if not remote_confirmed:
             sys.exit(1)
-    if mode in ["local", "local2"]:
+
+    if mode in ["local"]:
         for task in batch_tasks:
             env = task.pop("env", None)
             command = to_local_command(
@@ -456,23 +439,19 @@ def run_experiment_lite(
                 if isinstance(e, KeyboardInterrupt):
                     raise
             return popen_obj
-    elif mode in ['seuss', 'psc', 'satori']:
+    elif mode in ['gl', 'seuss', 'psc', 'satori']:
+        host = config.HOST_ADDRESS[mode]
         for task in batch_tasks:
             # TODO check remote directory
             remote_dir = config.REMOTE_DIR[mode]
             simg_dir = config.SIMG_DIR[mode]
             # query_yes_no('Confirm: Syncing code to {}:{}'.format(mode, remote_dir))
-            rsync_code(remote_host=config.HOST_ADDRESS[mode], remote_dir=remote_dir)
-
-            # task["log_dir"] = config.REMOTE_LOG_DIR[mode] + "/local/" + exp_prefix + "/" + task["exp_name"]
-
-            data_dir = task['log_dir']
-            if mode == 'psc' and use_gpu:
-                header = config.REMOTE_HEADER[mode + '_gpu']
-            else:
-                header = config.REMOTE_HEADER[mode]
-            header = header + "\n#SBATCH -o " + os.path.join(data_dir, 'slurm.out') + " # STDOUT"
-            header = header + "\n#SBATCH -e " + os.path.join(data_dir, 'slurm.err') + " # STDERR"
+            if first_variant:
+                rsync_code(remote_host=host, remote_dir=remote_dir)
+            remote_log_dir = task['log_dir']
+            header = config.REMOTE_HEADER[mode]
+            header = header + "\n#SBATCH -o " + os.path.join(remote_log_dir, 'slurm.out') + " # STDOUT"
+            header = header + "\n#SBATCH -e " + os.path.join(remote_log_dir, 'slurm.err') + " # STDERR"
             if simg_dir.find('$') == -1:
                 simg_dir = osp.join(remote_dir, simg_dir)
             command_list = to_slurm_command(
@@ -495,39 +474,41 @@ def run_experiment_lite(
             if print_command:
                 print("; ".join(command_list))
             command = "\n".join(command_list)
-            script_name = './' + task['exp_name']
-            remote_script_name = os.path.join(remote_dir, data_dir, task['exp_name'])
-            print(data_dir)
-            with open(script_name, 'w') as f:
+            os.system(f'mkdir -p {local_exp_dir}')
+            local_script_name = os.path.join(local_exp_dir, task['exp_name'])
+            with open(local_script_name, 'w') as f:
                 f.write(command)
-            print('Executing create folder', data_dir)
-            # os.system("ssh {host} \'{cmd}\'".format(host=config.HOST_ADDRESS[mode], cmd='mkdir -p ' + os.path.join(remote_dir, data_dir)))
-            os.system("ssh {host} \'{cmd}\'".format(host=config.HOST_ADDRESS[mode], cmd='mkdir -p ' + data_dir))
-            cmd = 'scp -o ProxyJump=zixuanhu@ss {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name,
-                                                                         host=config.HOST_ADDRESS[mode])
-            print('Executing cp script: ', cmd)
-            os.system(cmd)  # Copy script
-            if not dry:
-                cmd = "ssh -J zixuanhu@ss " + config.HOST_ADDRESS[mode] + " \'sbatch " + remote_script_name + "\'"
-                print('Submit to slurm ', cmd)
-                os.system(cmd)  # Launch
+
+            if last_variant:
+                print('Remote batch dir: ', remote_batch_dir)
+                os.system('scp -r {f1} {host}:{f2}'.format(f1=local_batch_dir, f2=remote_batch_dir, host=mode))
+                os.system(f'rm -rf {local_batch_dir}')
+                if not dry:
+                    print('Ready to execute the scheduler')
+                    remote_cmd = (f'cd {remote_dir} && . ./prepare.sh && '
+                                  f'python chester/scheduler/remote_slurm_launcher.py {remote_batch_dir} {dry}'),
+                    cmd = "ssh  {host} \'{cmd} \'".format(host=mode,
+                                                          cmd=remote_cmd
+                                                          )
+                    # cmd = "ssh -J zixuanhu@ss " + config.HOST_ADDRESS[mode] + " \'sbatch " + remote_script_name + "\'"
+                    print('Submit to slurm ', cmd)
+                    os.system(cmd)  # Launch
             # Cleanup
-            os.remove(script_name)
     elif mode in ['autobot']:
         for task in batch_tasks:
             # TODO check remote directory
             remote_dir = config.REMOTE_DIR[mode]
             simg_dir = config.SIMG_DIR[mode]
+
             # query_yes_no('Confirm: Syncing code to {}:{}'.format(mode, remote_dir))
             if first_variant:
                 rsync_code(remote_host=mode, remote_dir=remote_dir)
-            data_dir = task['log_dir']
-            # data_dir = os.path.join('data', 'local', exp_prefix, task['exp_name'])
-            remote_script_name = os.path.join(data_dir, task['exp_name'])
+            remote_log_dir = task['log_dir']
+            remote_script_name = os.path.join(remote_log_dir, task['exp_name'])
             local_script_name = os.path.join(local_exp_dir, task['exp_name'])
             header = '#CHESTERNODE ' + ','.join(config.AUTOBOT_NODELIST)
-            header = header + "\n#CHESTEROUT " + os.path.join(data_dir, 'slurm.out')
-            header = header + "\n#CHESTERERR " + os.path.join(data_dir, 'slurm.err')
+            header = header + "\n#CHESTEROUT " + os.path.join(remote_log_dir, 'slurm.out')
+            header = header + "\n#CHESTERERR " + os.path.join(remote_log_dir, 'slurm.err')
             header = header + "\n#CHESTERSCRIPT " + remote_script_name
             if simg_dir.find('$') == -1:
                 simg_dir = osp.join(remote_dir, simg_dir)
@@ -555,18 +536,17 @@ def run_experiment_lite(
             scheduler_script_name = os.path.join(local_chester_queue_dir, task['exp_name'])
             with open(script_name, 'w') as f:
                 f.write(command)
-            # pdb.set_trace()
-            # os.system("ssh {host} \'{cmd}\'".format(host=mode, cmd='mkdir -p ' + os.path.join(data_dir)))
-            # os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=remote_script_name, host=mode))  # Copy script
-            # os.system('scp {f1} {host}:{f2}'.format(f1=script_name, f2=scheduler_script_name, host=mode))
             os.system(f'cp {script_name} {local_script_name}')
             os.system(f'cp {script_name} {scheduler_script_name}')
+
             # Cleanup
             os.remove(script_name)
             # Open scheduler if all jobs have been submitted
             # Remote end will only open another scheduler when there is not one running already
             # Redirect the output of the remote scheduler to the log file
             if last_variant:
+                print('Syncing to remote')
+                print('Remote batch dir: ', remote_batch_dir)
                 os.system('scp -r {f1} {host}:{f2}'.format(f1=local_batch_dir, f2=remote_batch_dir, host=mode))
                 os.system('scp -r {f1} {host}:{f2}'.format(f1=local_chester_queue_dir, f2=config.CHESTER_QUEUE_DIR,
                                                            host=mode))
@@ -584,6 +564,7 @@ def run_experiment_lite(
                     print(remote_script_name)
                     print(cmd)
                 else:
+                    print(cmd)
                     os.system(cmd)
 
     elif mode == 'csail':

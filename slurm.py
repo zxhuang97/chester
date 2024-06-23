@@ -57,7 +57,7 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
                      script=osp.join(config.PROJECT_PATH, 'scripts/run_experiment.py'),
                      simg_dir=None, use_gpu=False, modules=None, cuda_module=None, use_singularity=True,
                      mount_options=None, compile_script=None, wait_compile=None, set_egl_gpu=False,
-                     env=None, is_vnice=False):
+                     env=None):
     # TODO Add code for specifying the resource allocation
     # TODO Check if use_gpu can be applied
     """
@@ -70,8 +70,6 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
     """
     assert simg_dir is not None
     command = python_command + " " + script
-    if is_vnice:
-        command = '/project_data/ramanan/mengtial/scripts/vnice/vnice.sh ' + command
     pre_commands = params.pop("pre_commands", None)
     post_commands = params.pop("post_commands", None)
 
