@@ -295,7 +295,6 @@ def run_experiment_lite(
         compile_script=None,
         wait_compile=None,
         use_singularity=True,
-        is_vnice=False,
         **kwargs):
     """
     Serialize the stubbed method call and run the experiment using the specified mode.
@@ -311,6 +310,7 @@ def run_experiment_lite(
     """
     last_variant = variant.pop('chester_last_variant', False)
     first_variant = variant.pop('chester_first_variant', False)
+    host = config.HOST_ADDRESS[mode]
     local_chester_queue_dir = config.LOG_DIR + '/queues'
     if first_variant:
         os.system(f'mkdir -p {local_chester_queue_dir}')
@@ -333,7 +333,8 @@ def run_experiment_lite(
 
     global exp_count
     global remote_confirmed
-    remote_batch_dir = os.path.join(config.REMOTE_LOG_DIR[mode], sub_dir)
+    remote_sub_dir = os.path.join(config.REMOTE_LOG_DIR[mode], sub_dir)
+    remote_batch_dir = os.path.join(remote_sub_dir, exp_prefix)
     local_batch_dir = os.path.join(config.LOG_DIR, sub_dir, exp_prefix)
     if mode == 'ec2':  # TODO change query to all tasks
         query_yes_no('Confirm: Launching jobs to ec2')
@@ -367,7 +368,7 @@ def run_experiment_lite(
                 exp_count = ind + 1
             task["exp_name"] = "{}_{}".format(exp_count, exp_name)
         if task.get("log_dir", None) is None:
-            task['log_dir'] = os.path.join(config.REMOTE_LOG_DIR[mode], sub_dir, exp_prefix, task["exp_name"])
+            task['log_dir'] = os.path.join(remote_batch_dir, task["exp_name"])
 
         if task.get("variant", None) is not None:
             variant = task.pop("variant")
@@ -429,7 +430,7 @@ def run_experiment_lite(
                 if env is None:
                     env = dict()
                 # TODO add argument for specifying container
-                singularity_header = 'singularity exec ./chester/containers/ubuntu-16.04-lts-rl.img'
+                singularity_header = f'singularity exec {config.SIMG_PATH[mode]}'
                 command = singularity_header + ' ' + command
                 subprocess.call(
                     command, shell=True, env=dict(os.environ, **env))
@@ -440,11 +441,9 @@ def run_experiment_lite(
                     raise
             return popen_obj
     elif mode in ['gl', 'seuss', 'psc', 'satori']:
-        host = config.HOST_ADDRESS[mode]
         for task in batch_tasks:
-            # TODO check remote directory
             remote_dir = config.REMOTE_DIR[mode]
-            simg_dir = config.SIMG_DIR[mode]
+            simg_dir = config.SIMG_PATH[mode]
             # query_yes_no('Confirm: Syncing code to {}:{}'.format(mode, remote_dir))
             if first_variant:
                 rsync_code(remote_host=host, remote_dir=remote_dir)
@@ -452,8 +451,8 @@ def run_experiment_lite(
             header = config.REMOTE_HEADER[mode]
             header = header + "\n#SBATCH -o " + os.path.join(remote_log_dir, 'slurm.out') + " # STDOUT"
             header = header + "\n#SBATCH -e " + os.path.join(remote_log_dir, 'slurm.err') + " # STDERR"
-            if simg_dir.find('$') == -1:
-                simg_dir = osp.join(remote_dir, simg_dir)
+            # if simg_dir.find('$') == -1:
+            #     simg_dir = osp.join(remote_dir, simg_dir)
             command_list = to_slurm_command(
                 task,
                 use_gpu=use_gpu,
@@ -475,30 +474,28 @@ def run_experiment_lite(
                 print("; ".join(command_list))
             command = "\n".join(command_list)
             os.system(f'mkdir -p {local_exp_dir}')
-            local_script_name = os.path.join(local_exp_dir, task['exp_name'])
+            local_script_name = os.path.join(local_exp_dir, "slurm_launch")
             with open(local_script_name, 'w') as f:
                 f.write(command)
 
             if last_variant:
-                print('Remote batch dir: ', remote_batch_dir)
-                os.system('scp -r {f1} {host}:{f2}'.format(f1=local_batch_dir, f2=remote_batch_dir, host=mode))
+                print('Remote sub dir: ', remote_sub_dir)
+                os.system('scp -r {f1} {host}:{f2}'.format(f1=local_batch_dir, f2=remote_sub_dir, host=mode))
                 os.system(f'rm -rf {local_batch_dir}')
-                if not dry:
-                    print('Ready to execute the scheduler')
-                    remote_cmd = (f'cd {remote_dir} && . ./prepare.sh && '
-                                  f'python chester/scheduler/remote_slurm_launcher.py {remote_batch_dir} {dry}'),
-                    cmd = "ssh  {host} \'{cmd} \'".format(host=mode,
-                                                          cmd=remote_cmd
-                                                          )
-                    # cmd = "ssh -J zixuanhu@ss " + config.HOST_ADDRESS[mode] + " \'sbatch " + remote_script_name + "\'"
-                    print('Submit to slurm ', cmd)
-                    os.system(cmd)  # Launch
+                print('Ready to execute the scheduler')
+                remote_cmd = (f'cd {remote_dir} && . ./prepare.sh && '
+                              f'python chester/scheduler/remote_slurm_launcher.py {remote_batch_dir} {dry}')
+                cmd = "ssh  {host} \'{cmd} \'".format(host=host,
+                                                      cmd=remote_cmd
+                                                      )
+                print('Submit to slurm ', cmd)
+                os.system(cmd)  # Launch
             # Cleanup
     elif mode in ['autobot']:
         for task in batch_tasks:
             # TODO check remote directory
             remote_dir = config.REMOTE_DIR[mode]
-            simg_dir = config.SIMG_DIR[mode]
+            simg_dir = config.SIMG_PATH[mode]
 
             # query_yes_no('Confirm: Syncing code to {}:{}'.format(mode, remote_dir))
             if first_variant:
@@ -527,7 +524,6 @@ def run_experiment_lite(
                 compile_script=compile_script,
                 wait_compile=wait_compile,
                 set_egl_gpu=True,
-                is_vnice=is_vnice,
             )
             if print_command:
                 print("; ".join(command_list))

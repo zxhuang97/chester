@@ -8,7 +8,6 @@ build
 .idea
 *.mp4
 .git
-DPI-Net
 videos
 imgs
 wandb

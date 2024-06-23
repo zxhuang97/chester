@@ -10,7 +10,7 @@ HOST_ADDRESS = {
     'seuss': 'zixuanhu@seuss.ri.cmu.edu',
     'autobot': 'zixuanhu@autobot.vision.cs.cmu.edu',
     'autobot2': 'zixuanhu@autobot.vision.cs.cmu.edu',
-    'gl': "zixuanh@greatlakes.arc-ts.umich.edu",
+    'gl': "zixuanh@gl",
     "armdual": "armdual.local"
 }
 
@@ -32,6 +32,7 @@ REMOTE_MOUNT_OPTION = {
 REMOTE_LOG_DIR = {
     'seuss': os.path.join(REMOTE_DIR['seuss'], "data"),
     'autobot': os.path.join(REMOTE_DIR['autobot'], "data"),
+    "gl": os.path.join(REMOTE_DIR["gl"], "data"),
     'psc': os.path.join('/mnt', "data"),
     'local':  os.path.join(REMOTE_DIR['local'], "data"),
     'armdual':  os.path.join(REMOTE_DIR['armdual'], "data"),
@@ -60,7 +61,8 @@ autobot="""
 
 
 # location of the singularity file related to the project
-SIMG_DIR = {
+SIMG_PATH = {
+    'gl': None,
     'seuss': '/home/zixuanhu/containers/softgymcontainer_v3.simg',
     'autobot': '/home/zixuanhu/softgym_containers/ubuntu20.sif',
 }

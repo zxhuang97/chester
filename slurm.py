@@ -68,7 +68,6 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
     :param use_gpu:
     :return:
     """
-    assert simg_dir is not None
     command = python_command + " " + script
     pre_commands = params.pop("pre_commands", None)
     post_commands = params.pop("post_commands", None)
@@ -76,52 +75,44 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
     command_list = list()
     command_list.append(header)
     sing_commands = list()
+
+    command_list.append('set -x')  # echo commands to stdout
+    command_list.append('set -u')  # throw an error if unset variable referenced
+    command_list.append('set -e')  # exit on errors
+    command_list.append('srun hostname')
+    command_list.append('cd {}'.format(remote_dir))
+    for remote_module in modules:
+        command_list.append('module load ' + remote_module)
+    if use_gpu:
+        assert cuda_module is not None
+        command_list.append('module load ' + cuda_module)
+
     # Log into singularity shell
     if use_singularity:
-        command_list.append('set -x')  # echo commands to stdout
-        command_list.append('set -u')  # throw an error if unset variable referenced
-        command_list.append('set -e')  # exit on errors
         # command_list.append('srun hostname')
-
-        for remote_module in modules:
-            command_list.append('module load ' + remote_module)
-        # Use conda installation
-        if use_gpu:
-            assert cuda_module is not None
-            command_list.append('module load ' + cuda_module)
-        command_list.append('cd {}'.format(remote_dir))
         # First execute a bash program inside the container and then run all the following commands
-
         if mount_options is not None:
             options = '-B ' + mount_options
         else:
             options = ''
         sing_prefix = 'singularity exec {} {} {} /bin/bash -c'.format(options, '--nv' if use_gpu else '', simg_dir)
 
-        if compile_script is None or 'prepare' not in compile_script:
-            sing_commands.append('. ./prepare.sh')
-        if set_egl_gpu:
-            sing_commands.append('export EGL_GPU=$SLURM_JOB_GRES')
-            sing_commands.append('echo $EGL_GPU')
-        if compile_script is not None:
-            sing_commands.append(compile_script)
-        if wait_compile is not None:
-            sing_commands.append('sleep '+str(int(wait_compile)))
     else:
-        command_list.append('set -x')  # echo commands to stdout
-        # command_list.append('set -u')  # throw an error if unset variable referenced
-        command_list.append('set -e')  # exit on errors
-        # command_list.append('srun hostname')
-
-        for remote_module in modules:
-            command_list.append('module load ' + remote_module)
-        command_list.append('cd {}'.format(remote_dir))
-        command_list.append('. ./prepare.sh')
-        # command_list.append('ulimit -n 2048')
-        command_list.append('export EGL_GPU=$SLURM_JOB_GRES')
+        sing_prefix = '/bin/bash -c'
+    sing_commands.append("source ~/.bashrc")
+    if compile_script is None or 'prepare' not in compile_script:
+        sing_commands.append('. ./prepare.sh')
+    if set_egl_gpu:
+        sing_commands.append('export EGL_GPU=$SLURM_JOB_GRES')
+        sing_commands.append('echo $EGL_GPU')
+    if compile_script is not None:
+        sing_commands.append(compile_script)
+    if wait_compile is not None:
+        sing_commands.append('sleep ' + str(int(wait_compile)))
 
     if pre_commands is not None:
         command_list.extend(pre_commands)
+
     for k, v in params.items():
         if isinstance(v, dict):
             for nk, nv in v.items():
@@ -131,12 +122,10 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
                     command += "  --%s_%s %s" % (k, nk, _to_param_val(nv))
         else:
             command += "  --%s %s" % (k, _to_param_val(v))
+
     sing_commands.append(command)
     all_sing_cmds = ' && '.join(sing_commands)
-    if use_singularity:
-        command_list.append(sing_prefix + ' \'{}\''.format(all_sing_cmds))
-    else:
-        command_list.append(all_sing_cmds)
+    command_list.append(sing_prefix + ' \'{}\''.format(all_sing_cmds))
     if post_commands is not None:
         command_list.extend(post_commands)
     return command_list
