@@ -11,7 +11,8 @@ HOST_ADDRESS = {
     'autobot': 'zixuanhu@autobot.vision.cs.cmu.edu',
     'autobot2': 'zixuanhu@autobot.vision.cs.cmu.edu',
     'gl': "zixuanh@gl",
-    "armdual": "armdual.local"
+    "armdual": "armdual.local",
+    'local': "",
 }
 
 # Make sure to use absolute path
@@ -42,7 +43,7 @@ REMOTE_HEADER = dict(gl="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
 #SBATCH --partition=spgpu,gpu_mig40
-#SBATCH --cpus-per-task=6
+#SBATCH --cpus-per-task=4
 #SBATCH --time=72:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --mem=60G

@@ -336,8 +336,6 @@ def run_experiment_lite(
     remote_sub_dir = os.path.join(config.REMOTE_LOG_DIR[mode], sub_dir)
     remote_batch_dir = os.path.join(remote_sub_dir, exp_prefix)
     local_batch_dir = os.path.join(config.LOG_DIR, sub_dir, exp_prefix)
-    if mode == 'ec2':  # TODO change query to all tasks
-        query_yes_no('Confirm: Launching jobs to ec2')
     for task in batch_tasks:
         call = task.pop("stub_method_call")
         if use_cloudpickle:
@@ -381,7 +379,7 @@ def run_experiment_lite(
         task["env"] = task.get("env", dict()) or dict()
         local_exp_dir = os.path.join(local_batch_dir, task["exp_name"])
 
-    if mode not in ["local", "gl", "local_singularity", "ec2"] and not remote_confirmed and not dry:
+    if mode not in ["local", "local_singularity", "ec2"] and not remote_confirmed and not dry:
         remote_confirmed = query_yes_no(
             "Running in (non-dry) mode %s. Confirm?" % mode)
         if not remote_confirmed:
@@ -562,20 +560,6 @@ def run_experiment_lite(
                 else:
                     print(cmd)
                     os.system(cmd)
-
-    elif mode == 'csail':
-        # Launcher is running on the compute node, so no needed to sync codes
-        available_nodes = []
-        for task in batch_tasks:
-            command = to_local_command(
-                task,
-                python_command=python_command,
-                script=osp.join(config.PROJECT_PATH, script)
-            )
-            if print_command:
-                print(command)
-            remote_dir = config.REMOTE_DIR[mode]
-            print
 
     elif mode == 'ec2':
         # if docker_image is None:
