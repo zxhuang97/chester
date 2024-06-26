@@ -281,7 +281,7 @@ def run_experiment_lite(
         log_dir=None,
         sub_dir='train',
         script='chester/run_exp_worker.py',  # TODO: change this before making pip package
-        python_command="srun python",
+        python_command="python",
         mode="local",
         use_gpu=False,
         dry=False,
@@ -453,6 +453,7 @@ def run_experiment_lite(
             header = header.replace("$gpus", gpus)
             # if simg_dir.find('$') == -1:
             #     simg_dir = osp.join(remote_dir, simg_dir)
+            python_command = "srun python"
             command_list = to_slurm_command(
                 task,
                 use_gpu=use_gpu,
