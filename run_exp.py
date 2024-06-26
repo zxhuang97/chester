@@ -281,7 +281,7 @@ def run_experiment_lite(
         log_dir=None,
         sub_dir='train',
         script='chester/run_exp_worker.py',  # TODO: change this before making pip package
-        python_command="python",
+        python_command="srun python",
         mode="local",
         use_gpu=False,
         dry=False,
@@ -361,10 +361,10 @@ def run_experiment_lite(
                 elif variant[v] is not None:  # int or float
                     exp_name += '_{}_{:g}'.format(key_name, variant[v])
             ind = len(glob.glob(local_batch_dir + '/*'))
-            print('exp full name ', exp_name, ind)
             if exp_count == -1:
                 exp_count = ind + 1
             task["exp_name"] = "{}_{}".format(exp_count, exp_name)
+            print('exp name ', task["exp_name"])
         if task.get("log_dir", None) is None:
             task['log_dir'] = os.path.join(remote_batch_dir, task["exp_name"])
 
@@ -449,6 +449,8 @@ def run_experiment_lite(
             header = config.REMOTE_HEADER[mode]
             header = header + "\n#SBATCH -o " + os.path.join(remote_log_dir, 'slurm.out') + " # STDOUT"
             header = header + "\n#SBATCH -e " + os.path.join(remote_log_dir, 'slurm.err') + " # STDERR"
+            gpus = str(variant.get("gpus", 1))
+            header = header.replace("$gpus", gpus)
             # if simg_dir.find('$') == -1:
             #     simg_dir = osp.join(remote_dir, simg_dir)
             command_list = to_slurm_command(

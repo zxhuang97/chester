@@ -53,7 +53,7 @@ def _to_param_val(v):
         return _shellquote(str(v))
 
 
-def to_slurm_command(params, header, python_command="python", remote_dir='~/',
+def to_slurm_command(params, header, python_command="srun python", remote_dir='~/',
                      script=osp.join(config.PROJECT_PATH, 'scripts/run_experiment.py'),
                      simg_dir=None, use_gpu=False, modules=None, cuda_module=None, use_singularity=True,
                      mount_options=None, compile_script=None, wait_compile=None, set_egl_gpu=False,
@@ -102,6 +102,9 @@ def to_slurm_command(params, header, python_command="python", remote_dir='~/',
     sing_commands.append("source ~/.bashrc")
     if compile_script is None or 'prepare' not in compile_script:
         sing_commands.append('. ./prepare.sh')
+    sing_commands.append("export NCCL_DEBUG=INFO")
+    sing_commands.append("export PYTHONFAULTHANDLER=1")
+    sing_commands.append("export NCCL_SOCKET_IFNAME=^docker0,lo")
     if set_egl_gpu:
         sing_commands.append('export EGL_GPU=$SLURM_JOB_GRES')
         sing_commands.append('echo $EGL_GPU')

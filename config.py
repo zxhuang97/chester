@@ -42,12 +42,23 @@ REMOTE_LOG_DIR = {
 REMOTE_HEADER = dict(gl="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
+#SBATCH --partition=spgpu
+#SBATCH --cpus-per-gpu=4
+#SBATCH --time=72:00:00
+#SBATCH --gpus=$gpus
+#SBATCH --ntasks-per-node=$gpus
+#SBATCH --mem-per-gpu=48G
+#SBATCH --gpu_cmode=shared
+""".strip(),
+gl2="""
+#!/usr/bin/env bash
+#SBATCH --nodes=1
 #SBATCH --partition=spgpu,gpu_mig40
 #SBATCH --cpus-per-task=4
 #SBATCH --time=72:00:00
 #SBATCH --gres=gpu:1
-#SBATCH --mem=60G
-""".strip(), 
+#SBATCH --mem=48G
+""".strip(),
 autobot="""
 #!/usr/bin/env bash
 #SBATCH --nodes=1
